@@ -185,38 +185,53 @@ export default function Home() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedDrugs.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={uniquePayers.length + 1} className="h-24 text-center">
-                          No drugs found matching your criteria.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedDrugs.map(drug => (
-                        <TableRow key={drug} className="group hover:bg-muted/50">
-                          <TableCell 
-                          onClick={() => setSelectedDrug(drug)}
-                          className="font-bold text-blue-400 hover:text-blue-300 sticky left-0 z-20 bg-slate-900/80 backdrop-blur-md group-hover:bg-slate-800/90 border-r border-white/10 cursor-pointer hover:underline transition-colors"
-                            >
-                          {drug}
-                        </TableCell>
-                          {uniquePayers.map(payer => {
-                            const policyMatch = policies.find(p => p.drugName === drug && p.payerName === payer);
-                            return (
-                              <TableCell key={`${drug}-${payer}`}>
-                                {getStatusBadge(policyMatch?.isCovered)}
-                                {policyMatch && (
-                                  <div className="text-[10px] text-muted-foreground mt-1 uppercase font-semibold">
-                                    PA: {policyMatch.priorAuth}
-                                  </div>
-                                )}
-                              </TableCell>
-                            );
-                          })}
+                      {paginatedDrugs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={uniquePayers.length + 1} className="h-24 text-center text-slate-500">
+                            No drugs found matching your criteria.
+                          </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
+                      ) : (
+                        paginatedDrugs.map((drug) => (
+                          <TableRow 
+                            key={drug} 
+                            // Added border-b for row separation and a very subtle zebra stripe
+                            className="group border-b border-white/5 hover:bg-white/[0.03] even:bg-white/[0.01] transition-colors"
+                          >
+                            {/* DRUG NAME: Swapped Blue for White + kept your Sticky logic */}
+                            <TableCell 
+                              onClick={() => setSelectedDrug(drug)}
+                              className="font-bold text-white sticky left-0 z-20 bg-slate-950/90 backdrop-blur-md group-hover:bg-slate-900 border-r border-white/10 cursor-pointer transition-colors py-5 pl-6"
+                            >
+                              {drug}
+                            </TableCell>
+                        
+                            {uniquePayers.map(payer => {
+                              const policyMatch = policies.find(p => p.drugName === drug && p.payerName === payer);
+                            
+                              return (
+                                <TableCell key={`${drug}-${payer}`} className="py-5">
+                                  <div className="flex flex-col gap-1.5">
+                                    {policyMatch ? (
+                                      <>
+                                        {getStatusBadge(policyMatch.isCovered)}
+                                        {/* Harder/Brighter PA text for better scan-ability */}
+                                        <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
+                                          PA: {policyMatch.priorAuth}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      /* High-contrast placeholder for empty cells */
+                                      <span className="text-slate-600 italic text-sm font-medium">No Data</span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
                 </Table>
               </div>
             </Card>
