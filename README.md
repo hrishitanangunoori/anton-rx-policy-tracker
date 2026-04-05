@@ -75,6 +75,7 @@ Backend caching: Fast JSON lookups minimize load times.
 Efficient AI context injection: Only relevant data is provided to the AI, reducing latency.
 
 **Tech Stack**
+
 Frontend: Next.js, Tailwind CSS, Shadcn UI, Lucide-React, react-markdown
 
 Backend: FastAPI, Uvicorn, Python, JSON database
