@@ -1,305 +1,43 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { Search } from "lucide-react";
-
-// Shadcn UI Components
-import { Input } from "@/components/ui/input";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { LayoutGrid, MessageSquare, Activity } from "lucide-react";
 
-interface PolicyData {
-  id: string;
-  payerName: string;
-  drugName: string;
-  isCovered: string;
-  requiredDiagnosis: string;
-  stepTherapy: string;
-  priorAuth: string;
-  siteOfCare: string;
-}
-
-export default function Home() {
-  const [policies, setPolicies] = useState<PolicyData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [coverageFilter, setCoverageFilter] = useState("All");
-  
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
-
-  // Deep Dive State
-  const [selectedDrug, setSelectedDrug] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchPolicies = async () => {
-      try {
-        const response = await fetch("http://localhost:8000/api/policies");
-        if (response.ok) {
-          const data = await response.json();
-          setPolicies(data);
-        }
-      } catch (error) {
-        console.error("Error fetching policies:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchPolicies();
-  }, []);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, sortOrder, coverageFilter]);
-
-  // --- DATA TRANSFORMATION ---
-  const uniquePayers = Array.from(new Set(policies.map(p => p.payerName))).sort();
-  const uniqueDrugs = Array.from(new Set(policies.map(p => p.drugName)));
-
-  let processedDrugs = uniqueDrugs.filter(drug => 
-    drug.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  if (coverageFilter !== "All") {
-    processedDrugs = processedDrugs.filter(drug => {
-      const policyMatch = policies.find(p => p.drugName === drug && p.payerName === coverageFilter);
-      return policyMatch && policyMatch.isCovered.toLowerCase() === "covered";
-    });
-  }
-
-  processedDrugs.sort((a, b) => {
-    if (sortOrder === "asc") return a.localeCompare(b);
-    return b.localeCompare(a);
-  });
-
-  const totalPages = Math.ceil(processedDrugs.length / itemsPerPage);
-  const paginatedDrugs = processedDrugs.slice(
-    (currentPage - 1) * itemsPerPage, 
-    currentPage * itemsPerPage
-  );
-
-  // Enterprise Status Badges
-  const getStatusBadge = (status: string | undefined) => {
-    if (!status) return <span className="text-muted-foreground italic text-xs">No Data</span>;
-    const lowerStatus = status.toLowerCase();
-    if (lowerStatus.includes("not covered")) return <Badge variant="destructive">Not Covered</Badge>;
-    if (lowerStatus.includes("covered")) return <Badge className="bg-emerald-500 hover:bg-emerald-600">Covered</Badge>;
-    return <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-200">{status}</Badge>;
-  };
-
+export default function LandingPage() {
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50 relative">
-      
-      {/* HEADER & FILTER BAR */}
-      <header className="bg-white border-b border-border px-8 py-6 shrink-0 z-10 shadow-sm">
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Coverage Matrix</h2>
+    <div className="flex-1 flex flex-col items-center justify-center bg-transparent relative overflow-hidden h-full">
+
+      <div className="z-10 text-center px-6 mb-24 flex flex-col items-center">
         
-        <div className="flex flex-col md:flex-row gap-4 max-w-5xl">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search by Drug Name..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10"
-            />
-          </div>
-          
-          <Select value={coverageFilter} onValueChange={setCoverageFilter}>
-            <SelectTrigger className="w-[200px] h-10">
-              <SelectValue placeholder="All Coverage" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All Coverage</SelectItem>
-              <SelectGroup>
-                <SelectLabel>Covered By:</SelectLabel>
-                {uniquePayers.map(payer => (
-                  <SelectItem key={payer} value={payer}>{payer}</SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-
-          <Select value={sortOrder} onValueChange={(val) => setSortOrder(val as "asc" | "desc")}>
-            <SelectTrigger className="w-[140px] h-10">
-              <SelectValue placeholder="Sort" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="asc">A - Z</SelectItem>
-              <SelectItem value="desc">Z - A</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Animated Icon (Dark Mode adjusted) */}
+        <div className="inline-flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md text-blue-400 rounded-3xl mb-8 shadow-2xl border border-white/10">
+          <Activity className="w-10 h-10" />
         </div>
-      </header>
 
-      {/* MAIN CONTENT: The Matrix Table */}
-      <div className="flex-1 p-8 flex flex-col min-h-0">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-pulse">
-            <p className="font-medium">Compiling Cross-Payer Matrix...</p>
-          </div>
-        ) : (
-          <>
-            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden border-border shadow-sm rounded-xl">
-              <div className="overflow-auto flex-1 relative">
-                <Table>
-                  <TableHeader className="bg-muted/50 sticky top-0 z-30 shadow-sm">
-                    <TableRow>
-                      <TableHead className="w-[250px] font-bold uppercase tracking-wider text-xs sticky left-0 z-40 bg-muted/95 backdrop-blur shadow-[1px_0_0_0_#e2e8f0]">
-                        Medical Benefit Drug
-                      </TableHead>
-                      {uniquePayers.map(payer => (
-                        <TableHead key={payer} className="font-bold text-foreground">
-                          {payer}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedDrugs.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={uniquePayers.length + 1} className="h-24 text-center">
-                          No drugs found matching your criteria.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedDrugs.map(drug => (
-                        <TableRow key={drug} className="group hover:bg-muted/50">
-                          <TableCell 
-                            onClick={() => setSelectedDrug(drug)}
-                            className="font-semibold text-primary sticky left-0 z-20 bg-background group-hover:bg-muted shadow-[1px_0_0_0_#e2e8f0] cursor-pointer hover:underline"
-                          >
-                            {drug}
-                          </TableCell>
-                          {uniquePayers.map(payer => {
-                            const policyMatch = policies.find(p => p.drugName === drug && p.payerName === payer);
-                            return (
-                              <TableCell key={`${drug}-${payer}`}>
-                                {getStatusBadge(policyMatch?.isCovered)}
-                                {policyMatch && (
-                                  <div className="text-[10px] text-muted-foreground mt-1 uppercase font-semibold">
-                                    PA: {policyMatch.priorAuth}
-                                  </div>
-                                )}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
+        {/* Massive Hero Title */}
+        <h1 className="text-6xl md:text-8xl font-extrabold tracking-tight text-white mb-6 drop-shadow-lg">
+          Policy <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">Pulse</span>
+        </h1>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Showing <span className="font-medium text-foreground">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-medium text-foreground">{Math.min(currentPage * itemsPerPage, processedDrugs.length)}</span> of <span className="font-medium text-foreground">{processedDrugs.length}</span> drugs
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
-                    Previous
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+        <p className="text-xl md:text-2xl text-slate-300 max-w-2xl mb-12 font-medium drop-shadow-md">
+          The centralized intelligence engine for medical benefit drug coverage, step therapy, and prior authorization.
+        </p>
+
+        {/* Call to Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+          <Link href="/matrix">
+            <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-lg rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all border border-blue-500">
+              <LayoutGrid className="mr-2 h-5 w-5" />
+              Explore the Matrix
+            </Button>
+          </Link>
+          <Link href="/chat">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-lg rounded-xl border border-white/20 hover:bg-white/10 shadow-sm transition-all text-slate-200 bg-slate-900/50 backdrop-blur-md">
+              <MessageSquare className="mr-2 h-5 w-5" />
+              Ask the Copilot
+            </Button>
+          </Link>
+        </div>
       </div>
-
-      {/* --- SHADCN DIALOG (DEEP DIVE MODAL) --- */}
-      <Dialog open={!!selectedDrug} onOpenChange={(open) => !open && setSelectedDrug(null)}>
-        {/* THE FIX: Added sm: and lg: prefixes to force an override of Shadcn's default narrow modal */}
-        <DialogContent className="sm:max-w-[95vw] lg:max-w-6xl w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-          
-          <DialogHeader className="p-6 sm:p-8 border-b bg-muted/40 shrink-0">
-            <DialogTitle className="text-3xl font-extrabold">{selectedDrug}</DialogTitle>
-            <DialogDescription className="text-primary font-medium text-base mt-1">
-              Cross-Payer Deep Dive Report
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-muted/10 w-full">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-              
-              {uniquePayers.map(payer => {
-                const policy = policies.find(p => p.drugName === selectedDrug && p.payerName === payer);
-                if (!policy) return null;
-
-                return (
-                  <Card key={payer} className="shadow-sm w-full flex flex-col overflow-hidden">
-                    <CardHeader className="bg-muted/30 border-b pb-4 pt-4 flex flex-row justify-between items-center space-y-0 shrink-0">
-                      <CardTitle className="text-lg font-bold truncate pr-4" title={payer}>{payer}</CardTitle>
-                      {getStatusBadge(policy.isCovered)}
-                    </CardHeader>
-                    
-                    <CardContent className="pt-6 space-y-6 flex-1 flex flex-col min-w-0">
-                      <div className="w-full">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Required Diagnosis</p>
-                        <p className="text-sm font-medium leading-relaxed break-words">{policy.requiredDiagnosis}</p>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/30 p-4 rounded-xl border w-full">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Prior Auth</p>
-                          <p className="text-sm font-bold truncate">{policy.priorAuth}</p>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Site of Care</p>
-                          <p className="text-sm font-bold truncate" title={policy.siteOfCare}>{policy.siteOfCare}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex-1 w-full">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Step Therapy (Try First)</p>
-                        <div className="bg-orange-50/50 text-orange-900 border border-orange-200 p-4 rounded-xl dark:bg-orange-950/30 dark:text-orange-200 dark:border-orange-900 h-full w-full">
-                          <p className="text-sm leading-relaxed break-words">{policy.stepTherapy}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
     </div>
   );
 }

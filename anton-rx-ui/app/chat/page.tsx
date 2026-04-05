@@ -89,10 +89,10 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50">
+    <div className="flex-1 flex flex-col h-full bg-transparent">
       
       {/* Header */}
-      <header className="bg-white border-b border-border px-8 py-6 shrink-0 z-10 shadow-sm">
+      <header className="bg-slate-950/40 backdrop-blur-xl border-b border-white/10 px-8 py-6 shrink-0 z-10 shadow-lg">
         <h2 className="text-2xl font-bold tracking-tight mb-1">Policy Copilot</h2>
         <p className="text-muted-foreground">Ask natural language questions against your parsed formulary data.</p>
       </header>
@@ -113,11 +113,7 @@ export default function ChatPage() {
               )}
 
               {/* Message Bubble */}
-              <Card className={`p-4 max-w-[80%] shadow-sm border-0 ${
-                message.role === "user" 
-                  ? "bg-blue-600 text-white rounded-2xl rounded-tr-sm" 
-                  : "bg-white text-slate-800 rounded-2xl rounded-tl-sm border-border"
-              }`}>
+              <Card className="p-4 max-w-[80%] shadow-lg bg-slate-800/60 backdrop-blur-md border border-white/10 text-slate-100 rounded-2xl rounded-tl-sm">
                 {/* THE FIX: Moved space-y-4 to this parent div! */}
                 <div className="leading-relaxed text-sm md:text-base space-y-4"> 
                   <ReactMarkdown
@@ -161,7 +157,7 @@ export default function ChatPage() {
       </div>
 
       {/* Input Area */}
-      <div className="bg-white border-t border-border p-6 shrink-0">
+      <div className="bg-slate-950/40 backdrop-blur-xl border-t border-white/10 p-6 shrink-0">
         <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-4">
           <Input 
             placeholder="e.g., Which payers cover Avastin without step therapy?" 
@@ -173,7 +169,7 @@ export default function ChatPage() {
           <Button 
             type="submit" 
             disabled={!inputValue.trim() || isLoading}
-            className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm"
+            className="bg-white/50 backdrop-blur-md border-white/60 focus:bg-white/80 transition-all ..."
           >
             <Send className="w-5 h-5 mr-2" />
             Ask Copilot

@@ -128,3 +128,42 @@
     @apply font-sans;
   }
 }
+
+/* Add your custom color palette here */
+:root {
+  --color-orb-1: #4ade80; /* Bright Green */
+  --color-orb-2: #3b82f6; /* Bright Blue */
+  --color-orb-3: #8b5cf6; /* Purple */
+  --color-orb-4: #f472b6; /* Pink */
+}
+
+@layer utilities {
+  .animate-blob {
+    /* Changed from 15s to 8s for faster movement */
+    animation: blob 8s infinite alternate;
+  }
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+  .animation-delay-6000 {
+    animation-delay: 6s;
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(50px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-40px, 40px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
