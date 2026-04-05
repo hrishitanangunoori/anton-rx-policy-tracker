@@ -19,7 +19,7 @@ export default function ChatPage() {
     {
       id: "1",
       role: "assistant",
-      content: "Hello! I am the Anton RX Policy Copilot. I have access to the full medical benefit database. Ask me anything about drug coverage, step therapy, or prior authorization requirements."
+      content: "Hello! I am PulseBot. I have access to the full medical benefit database. Ask me anything about drug coverage, step therapy, or prior authorization requirements."
     }
   ]);
   const [inputValue, setInputValue] = useState("");
@@ -92,9 +92,9 @@ export default function ChatPage() {
     <div className="flex-1 flex flex-col h-full bg-transparent">
       
       {/* Header */}
-      <header className="bg-slate-950/40 backdrop-blur-xl border-b border-white/10 px-8 py-6 shrink-0 z-10 shadow-lg">
-        <h2 className="text-2xl font-bold tracking-tight mb-1">Policy Copilot</h2>
-        <p className="text-muted-foreground">Ask natural language questions against your parsed formulary data.</p>
+      <header className="bg-slate-950/40 backdrop-blur-md border-b border-white/10 px-8 py-6 shrink-0 z-10 shadow-lg">
+        <h2 className="text-2xl font-bold tracking-tight mb-1">PulseBot</h2>
+        <p className="text-muted-foreground">Ask natural language questions against the medical benefit data benefit.</p>
       </header>
 
       {/* Chat Area */}
@@ -113,20 +113,30 @@ export default function ChatPage() {
               )}
 
               {/* Message Bubble */}
-              <Card className="p-4 max-w-[80%] shadow-lg bg-slate-800/60 backdrop-blur-md border border-white/10 text-slate-100 rounded-2xl rounded-tl-sm">
+              <Card className={`p-4 max-w-[80%] shadow-2xl border-white/10 ${
+                message.role === "user" 
+                ? "bg-blue-600/90 text-white rounded-2xl rounded-tr-sm" 
+                : "bg-slate-900/60 backdrop-blur-md text-white rounded-2xl rounded-tl-sm"
+}               `}>
                 {/* THE FIX: Moved space-y-4 to this parent div! */}
                 <div className="leading-relaxed text-sm md:text-base space-y-4"> 
                   <ReactMarkdown
-                    components={{
-                      strong: ({ node, ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
-                      ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-1.5" {...props} />,
-                      ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-1.5" {...props} />,
-                      li: ({ node, ...props }) => <li className="text-slate-700" {...props} />,
-                      p: ({ node, ...props }) => <p className="m-0" {...props} />
-                    }}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
+                  components={{
+                    // Changed text-slate-900 to text-white
+                    strong: ({ node, ...props }) => <strong className="font-semibold text-white" {...props} />,
+    
+                    ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-1.5" {...props} />,
+                    ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-1.5" {...props} />,
+    
+                    // Changed text-slate-700 to text-slate-200
+                    li: ({ node, ...props }) => <li className="text-slate-200" {...props} />,
+    
+                    // Ensure the paragraph text is also bright
+                    p: ({ node, ...props }) => <p className="m-0 text-slate-100" {...props} />
+            }}
+>
+  {message.content}
+</ReactMarkdown>
                 </div>
               </Card>
 
@@ -157,7 +167,7 @@ export default function ChatPage() {
       </div>
 
       {/* Input Area */}
-      <div className="bg-slate-950/40 backdrop-blur-xl border-t border-white/10 p-6 shrink-0">
+      <div className="bg-slate-950/40 backdrop-blur-md border-t border-white/10 p-6 shrink-0">
         <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-4">
           <Input 
             placeholder="e.g., Which payers cover Avastin without step therapy?" 

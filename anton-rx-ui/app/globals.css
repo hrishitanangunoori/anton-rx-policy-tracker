@@ -138,18 +138,26 @@
 }
 
 @layer utilities {
-  .animate-blob {
-    /* Changed from 15s to 8s for faster movement */
-    animation: blob 8s infinite alternate;
+  /* ... Your existing blob animations are here ... */
+
+  /* Add this inside your @layer utilities, under your blob animations */
+@keyframes grid-flow {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 60px; }
+}
+.animate-grid {
+  animation: grid-flow 2s linear infinite;
+}
+}
+
+/* Forces the grid into a 3D floor and slides it forward endlessly */
+@keyframes mesh-flow {
+  0% {
+    transform: perspective(800px) rotateX(75deg) translateY(0px);
   }
-  .animation-delay-2000 {
-    animation-delay: 2s;
-  }
-  .animation-delay-4000 {
-    animation-delay: 4s;
-  }
-  .animation-delay-6000 {
-    animation-delay: 6s;
+  100% {
+    /* Must match the background-size (80px) to create a seamless infinite loop */
+    transform: perspective(800px) rotateX(75deg) translateY(80px);
   }
 }
 
@@ -166,4 +174,33 @@
   100% {
     transform: translate(0px, 0px) scale(1);
   }
+}
+
+/* --- DARK GLASS SCROLLBAR --- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.1); /* Very faint background */
+  backdrop-filter: blur(4px);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1); /* Transparent white thumb */
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2); /* Brightens slightly on hover */
+  background-clip: content-box;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }

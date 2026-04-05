@@ -120,7 +120,7 @@ export default function Home() {
     <div className="flex-1 flex flex-col h-full bg-transparent relative">
       
       {/* HEADER & FILTER BAR */}
-      <header className="bg-slate-950/40 backdrop-blur-xl border-b border-white/10 px-8 py-6 shrink-0 z-10 shadow-lg">
+      <header className="bg-slate-950/40 backdrop-blur-md border-b border-white/10 px-8 py-6 shrink-0 z-10 shadow-lg">
         <h2 className="text-2xl font-bold tracking-tight mb-4">Coverage Matrix</h2>
         
         <div className="flex flex-col md:flex-row gap-4 max-w-5xl">
@@ -169,7 +169,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl">
+            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden bg-slate-900/50 backdrop-blur-md border border-white/10 shadow-2xl rounded-2xl">
               <div className="overflow-auto flex-1 relative">
                 <Table>
                   <TableHeader className="bg-muted/50 sticky top-0 z-30 shadow-sm">
