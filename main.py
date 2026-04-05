@@ -19,15 +19,22 @@ app.add_middleware(
 client = OpenAI()
 DATABASE = []
 
-# --- 1. The Pydantic Models ---
-class PolicyExtraction(BaseModel):
-    payerName: str = Field(description="The health plan or insurance company name.")
-    drugName: str = Field(description="The primary medical benefit drug name.")
-    isCovered: str = Field(description="Is it covered? (e.g., 'Covered', 'Not Covered', 'Restricted')")
-    requiredDiagnosis: str = Field(description="The specific diagnosis required for approval.")
-    stepTherapy: str = Field(description="What other drugs must the patient try and fail first? If none, say 'None'.")
-    priorAuth: str = Field(description="Is Prior Authorization required? (Yes/No)")
-    siteOfCare: str = Field(description="Where must it be administered? (e.g., Clinic, Hospital, Home Infusion)")
+# --- 1. Aggressively Prompted Pydantic Models for Multiple Drugs ---
+
+# This defines the shape of ONE drug's policy
+class SingleDrugPolicy(BaseModel):
+    payerName: str = Field(description="The short, recognizable name of the health plan ONLY (e.g., 'Cigna', 'UHC', 'BCBS NC', 'Florida Blue', 'Priority Health'). Do NOT include 'Corporate Medical Policy' or long company suffixes.")
+    drugName: str = Field(description="The EXACT brand or generic drug name ONLY (e.g., 'Avastin', 'Rituximab', 'Botox', 'Bevacizumab'). NEVER output program titles, document names, or the word 'policy'. Keep it to 1 or 2 words maximum.")
+    isCovered: str = Field(description="Is the drug covered? Output strictly one of: 'Covered', 'Not Covered', or 'Restricted'.")
+    requiredDiagnosis: str = Field(description="The core diagnosis required for approval. Keep it extremely brief (e.g., 'Rheumatoid Arthritis', 'Colorectal Cancer').")
+    stepTherapy: str = Field(description="What specific drugs must the patient try and fail first? If none are mentioned, strictly output 'None'.")
+    priorAuth: str = Field(description="Is Prior Authorization required? Output strictly 'Yes' or 'No'.")
+    siteOfCare: str = Field(description="Where must it be administered? (e.g., 'Clinic', 'Hospital', 'Home Infusion', or 'Unrestricted').")
+
+# NEW: This wrapper forces the AI to return an ARRAY of drugs
+class DocumentExtraction(BaseModel):
+    policies: List[SingleDrugPolicy] = Field(description="A comprehensive list of every individual medical benefit drug and its specific coverage criteria found in the document.")
+
 
 class CompareRequest(BaseModel):
     id1: str
@@ -48,14 +55,14 @@ def extract_text_from_pdf(file_path: str) -> str:
         print(f"Error reading {file_path}: {e}")
     return text
 
-def parse_with_ai(raw_text: str) -> PolicyExtraction:
+def parse_with_ai(raw_text: str) -> DocumentExtraction:
     completion = client.beta.chat.completions.parse(
         model="gpt-4o-mini", 
         messages=[
-            {"role": "system", "content": "You are an expert market access analyst. Extract the core formulary and coverage data from this medical benefit drug policy."},
+            {"role": "system", "content": "You are an expert market access analyst. Read this document and extract the coverage criteria for EVERY SINGLE DRUG mentioned. Return a complete array."},
             {"role": "user", "content": f"Document Text:\n{raw_text}"}
         ],
-        response_format=PolicyExtraction, 
+        response_format=DocumentExtraction, # Forces the array output
     )
     return completion.choices[0].message.parsed
 
@@ -77,28 +84,31 @@ async def load_local_pdfs():
         try:
             ai_result = parse_with_ai(raw_text)
             
-            # FIXED: We are now mapping the exact new variables from the Pydantic model
-            policy_data = {
-                "id": str(len(DATABASE) + 1), 
-                "documentName": filename,
-                "payerName": ai_result.payerName,
-                "drugName": ai_result.drugName,
-                "isCovered": ai_result.isCovered,
-                "requiredDiagnosis": ai_result.requiredDiagnosis,
-                "stepTherapy": ai_result.stepTherapy,
-                "priorAuth": ai_result.priorAuth,
-                "siteOfCare": ai_result.siteOfCare,
-                "raw_text": raw_text 
-            }
-            DATABASE.append(policy_data)
-            print(f"Successfully loaded: {ai_result.drugName} ({ai_result.payerName})")
+            # Loop through the array of drugs returned by the AI
+            for policy in ai_result.policies:
+                policy_data = {
+                    "id": str(len(DATABASE) + 1), 
+                    "documentName": filename,
+                    "payerName": policy.payerName,
+                    "drugName": policy.drugName,
+                    "isCovered": policy.isCovered,
+                    "requiredDiagnosis": policy.requiredDiagnosis,
+                    "stepTherapy": policy.stepTherapy,
+                    "priorAuth": policy.priorAuth,
+                    "siteOfCare": policy.siteOfCare,
+                    "raw_text": raw_text 
+                }
+                DATABASE.append(policy_data)
+                print(f"  -> Extracted: {policy.drugName} ({policy.payerName})")
+                
         except Exception as e:
             print(f"AI Parsing failed for {filename}: {e}")
+    
+    print(f"Ingestion complete. {len(DATABASE)} drug policies loaded into memory.")
 
 # --- 4. API Endpoints ---
 @app.get("/api/policies")
 async def get_policies():
-    # Return everything to the frontend EXCEPT the giant raw_text block
     return [{k: v for k, v in p.items() if k != "raw_text"} for p in DATABASE]
 
 @app.post("/api/compare")

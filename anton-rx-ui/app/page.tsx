@@ -1,8 +1,38 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Search } from "lucide-react";
 
-// Updated to match the exact problem statement criteria
+// Shadcn UI Components
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+
 interface PolicyData {
   id: string;
   payerName: string;
@@ -16,18 +46,24 @@ interface PolicyData {
 
 export default function Home() {
   const [policies, setPolicies] = useState<PolicyData[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   
-  // Selection state for comparison
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [showCompareModal, setShowCompareModal] = useState(false);
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [coverageFilter, setCoverageFilter] = useState("All");
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Deep Dive State
+  const [selectedDrug, setSelectedDrug] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulating the fetch - replace with your actual fetch logic
     const fetchPolicies = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/policies");
+        const response = await fetch("http://localhost:8000/api/policies");
         if (response.ok) {
           const data = await response.json();
           setPolicies(data);
@@ -41,172 +77,229 @@ export default function Home() {
     fetchPolicies();
   }, []);
 
-  const toggleSelection = (id: string) => {
-    setSelectedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((i) => i !== id);
-      if (prev.length >= 3) return prev; // Let them compare up to 3 now!
-      return [...prev, id];
-    });
-  };
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sortOrder, coverageFilter]);
 
-  const filteredPolicies = policies.filter(p => 
-    p.drugName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.payerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.requiredDiagnosis.toLowerCase().includes(searchQuery.toLowerCase())
+  // --- DATA TRANSFORMATION ---
+  const uniquePayers = Array.from(new Set(policies.map(p => p.payerName))).sort();
+  const uniqueDrugs = Array.from(new Set(policies.map(p => p.drugName)));
+
+  let processedDrugs = uniqueDrugs.filter(drug => 
+    drug.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Get the actual data objects for the comparison table
-  const selectedPolicies = policies.filter(p => selectedIds.includes(p.id));
+  if (coverageFilter !== "All") {
+    processedDrugs = processedDrugs.filter(drug => {
+      const policyMatch = policies.find(p => p.drugName === drug && p.payerName === coverageFilter);
+      return policyMatch && policyMatch.isCovered.toLowerCase() === "covered";
+    });
+  }
+
+  processedDrugs.sort((a, b) => {
+    if (sortOrder === "asc") return a.localeCompare(b);
+    return b.localeCompare(a);
+  });
+
+  const totalPages = Math.ceil(processedDrugs.length / itemsPerPage);
+  const paginatedDrugs = processedDrugs.slice(
+    (currentPage - 1) * itemsPerPage, 
+    currentPage * itemsPerPage
+  );
+
+  // Enterprise Status Badges
+  const getStatusBadge = (status: string | undefined) => {
+    if (!status) return <span className="text-muted-foreground italic text-xs">No Data</span>;
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus.includes("not covered")) return <Badge variant="destructive">Not Covered</Badge>;
+    if (lowerStatus.includes("covered")) return <Badge className="bg-emerald-500 hover:bg-emerald-600">Covered</Badge>;
+    return <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-200">{status}</Badge>;
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+    <div className="flex-1 flex flex-col h-full bg-slate-50 relative">
       
-      {/* Navbar */}
-      <nav className="bg-slate-900 text-white px-8 py-4 flex justify-between items-center shadow-md sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center font-bold text-xl">A</div>
-          <h1 className="text-xl font-bold tracking-wide">Anton RX <span className="font-light text-blue-400">Intelligence</span></h1>
-        </div>
-        <span className="text-sm font-medium bg-slate-800 border border-slate-700 px-4 py-1.5 rounded-full">
-          Medical Benefit Formulary
-        </span>
-      </nav>
-
-      <main className="max-w-7xl mx-auto p-8">
+      {/* HEADER & FILTER BAR */}
+      <header className="bg-white border-b border-border px-8 py-6 shrink-0 z-10 shadow-sm">
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Coverage Matrix</h2>
         
-        {/* Search Engine Header */}
-        <section className="mb-10 bg-white rounded-2xl p-10 shadow-sm border border-slate-200">
-          <h2 className="text-3xl font-extrabold mb-2 text-slate-800">Medical Policy Cross-Walk</h2>
-          <p className="text-slate-500 mb-8 max-w-3xl text-lg">
-            Instantly search and compare medical benefit coverage, step therapy, and site-of-care requirements across all health plans.
-          </p>
-          <div className="relative">
-            <svg className="absolute left-4 top-4 h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input 
-              type="text" 
-              placeholder="Search by Drug (e.g., Rituxan), Payer, or Diagnosis..." 
+        <div className="flex flex-col md:flex-row gap-4 max-w-5xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search by Drug Name..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-6 py-4 rounded-xl border-2 border-slate-200 text-slate-900 text-lg focus:outline-none focus:border-blue-500 transition-colors"
+              className="pl-9 h-10"
             />
           </div>
-        </section>
+          
+          <Select value={coverageFilter} onValueChange={setCoverageFilter}>
+            <SelectTrigger className="w-[200px] h-10">
+              <SelectValue placeholder="All Coverage" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All Coverage</SelectItem>
+              <SelectGroup>
+                <SelectLabel>Covered By:</SelectLabel>
+                {uniquePayers.map(payer => (
+                  <SelectItem key={payer} value={payer}>{payer}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
 
-        {/* Results Grid */}
-        <div className="flex justify-between items-end mb-6">
-          <h2 className="text-xl font-bold text-slate-800">Available Policies</h2>
-          <span className="text-sm text-slate-500 font-medium">Select up to 3 to compare</span>
+          <Select value={sortOrder} onValueChange={(val) => setSortOrder(val as "asc" | "desc")}>
+            <SelectTrigger className="w-[140px] h-10">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="asc">A - Z</SelectItem>
+              <SelectItem value="desc">Z - A</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+      </header>
 
+      {/* MAIN CONTENT: The Matrix Table */}
+      <div className="flex-1 p-8 flex flex-col min-h-0">
         {isLoading ? (
-          <div className="text-center py-20 text-slate-500 animate-pulse font-medium text-lg">
-            Indexing medical policies...
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-pulse">
+            <p className="font-medium">Compiling Cross-Payer Matrix...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPolicies.map((policy) => {
-              const isSelected = selectedIds.includes(policy.id);
-              return (
-                <div 
-                  key={policy.id} 
-                  onClick={() => toggleSelection(policy.id)}
-                  className={`cursor-pointer p-6 rounded-xl shadow-sm border-2 transition-all ${isSelected ? 'border-blue-600 bg-blue-50' : 'border-slate-100 bg-white hover:border-blue-300'}`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{policy.payerName}</span>
-                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-slate-300'}`}>
-                      {isSelected && <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
-                    </div>
-                  </div>
-                  
-                  <h3 className="text-2xl font-bold text-slate-900 mb-1">{policy.drugName}</h3>
-                  <p className="text-sm text-slate-600 font-medium mb-5 truncate">Dx: {policy.requiredDiagnosis}</p>
-                  
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-slate-100 p-2 rounded flex flex-col">
-                      <span className="text-slate-400 uppercase text-[10px] font-bold">Prior Auth</span>
-                      <span className="font-semibold text-slate-700">{policy.priorAuth}</span>
-                    </div>
-                    <div className="bg-slate-100 p-2 rounded flex flex-col">
-                      <span className="text-slate-400 uppercase text-[10px] font-bold">Site of Care</span>
-                      <span className="font-semibold text-slate-700 truncate">{policy.siteOfCare}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
-
-      {/* Floating Action Bar */}
-      {selectedIds.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-40 flex justify-center items-center gap-6">
-          <span className="font-bold text-slate-700">{selectedIds.length} Policies Selected</span>
-          <button 
-            onClick={() => setShowCompareModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-md transition-colors"
-          >
-            Generate Matrix Comparison
-          </button>
-        </div>
-      )}
-
-      {/* Matrix Comparison Modal */}
-      {showCompareModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            
-            <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">Medical Benefit Policy Matrix</h2>
-                <p className="text-slate-500 text-sm mt-1">Cross-walking requirements for selected policies</p>
+          <>
+            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden border-border shadow-sm rounded-xl">
+              <div className="overflow-auto flex-1 relative">
+                <Table>
+                  <TableHeader className="bg-muted/50 sticky top-0 z-30 shadow-sm">
+                    <TableRow>
+                      <TableHead className="w-[250px] font-bold uppercase tracking-wider text-xs sticky left-0 z-40 bg-muted/95 backdrop-blur shadow-[1px_0_0_0_#e2e8f0]">
+                        Medical Benefit Drug
+                      </TableHead>
+                      {uniquePayers.map(payer => (
+                        <TableHead key={payer} className="font-bold text-foreground">
+                          {payer}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedDrugs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={uniquePayers.length + 1} className="h-24 text-center">
+                          No drugs found matching your criteria.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedDrugs.map(drug => (
+                        <TableRow key={drug} className="group hover:bg-muted/50">
+                          <TableCell 
+                            onClick={() => setSelectedDrug(drug)}
+                            className="font-semibold text-primary sticky left-0 z-20 bg-background group-hover:bg-muted shadow-[1px_0_0_0_#e2e8f0] cursor-pointer hover:underline"
+                          >
+                            {drug}
+                          </TableCell>
+                          {uniquePayers.map(payer => {
+                            const policyMatch = policies.find(p => p.drugName === drug && p.payerName === payer);
+                            return (
+                              <TableCell key={`${drug}-${payer}`}>
+                                {getStatusBadge(policyMatch?.isCovered)}
+                                {policyMatch && (
+                                  <div className="text-[10px] text-muted-foreground mt-1 uppercase font-semibold">
+                                    PA: {policyMatch.priorAuth}
+                                  </div>
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-              <button onClick={() => setShowCompareModal(false)} className="text-slate-400 hover:text-slate-700 text-2xl font-bold leading-none">&times;</button>
-            </div>
+            </Card>
 
-            <div className="p-6 overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr>
-                    <th className="p-4 border-b-2 border-slate-200 text-slate-400 font-bold uppercase text-xs w-1/4">Criteria</th>
-                    {selectedPolicies.map(p => (
-                      <th key={p.id} className="p-4 border-b-2 border-slate-200 text-lg font-bold text-slate-800 w-1/4">
-                        {p.payerName}
-                        <div className="text-blue-600 text-sm font-medium">{p.drugName}</div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
-                  <tr className="hover:bg-slate-50">
-                    <td className="p-4 font-bold text-slate-700">Coverage Status</td>
-                    {selectedPolicies.map(p => <td key={p.id} className="p-4"><span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold">{p.isCovered}</span></td>)}
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="p-4 font-bold text-slate-700">Required Diagnosis</td>
-                    {selectedPolicies.map(p => <td key={p.id} className="p-4 text-slate-600">{p.requiredDiagnosis}</td>)}
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="p-4 font-bold text-slate-700">Step Therapy (Try First)</td>
-                    {selectedPolicies.map(p => <td key={p.id} className="p-4 text-slate-600">{p.stepTherapy}</td>)}
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="p-4 font-bold text-slate-700">Prior Auth Required</td>
-                    {selectedPolicies.map(p => <td key={p.id} className="p-4 font-semibold text-slate-800">{p.priorAuth}</td>)}
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="p-4 font-bold text-slate-700">Site of Care Limits</td>
-                    {selectedPolicies.map(p => <td key={p.id} className="p-4 text-slate-600">{p.siteOfCare}</td>)}
-                  </tr>
-                </tbody>
-              </table>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Showing <span className="font-medium text-foreground">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-medium text-foreground">{Math.min(currentPage * itemsPerPage, processedDrugs.length)}</span> of <span className="font-medium text-foreground">{processedDrugs.length}</span> drugs
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+                    Previous
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* --- SHADCN DIALOG (DEEP DIVE MODAL) --- */}
+      <Dialog open={!!selectedDrug} onOpenChange={(open) => !open && setSelectedDrug(null)}>
+        {/* THE FIX: Added sm: and lg: prefixes to force an override of Shadcn's default narrow modal */}
+        <DialogContent className="sm:max-w-[95vw] lg:max-w-6xl w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          
+          <DialogHeader className="p-6 sm:p-8 border-b bg-muted/40 shrink-0">
+            <DialogTitle className="text-3xl font-extrabold">{selectedDrug}</DialogTitle>
+            <DialogDescription className="text-primary font-medium text-base mt-1">
+              Cross-Payer Deep Dive Report
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-muted/10 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+              
+              {uniquePayers.map(payer => {
+                const policy = policies.find(p => p.drugName === selectedDrug && p.payerName === payer);
+                if (!policy) return null;
+
+                return (
+                  <Card key={payer} className="shadow-sm w-full flex flex-col overflow-hidden">
+                    <CardHeader className="bg-muted/30 border-b pb-4 pt-4 flex flex-row justify-between items-center space-y-0 shrink-0">
+                      <CardTitle className="text-lg font-bold truncate pr-4" title={payer}>{payer}</CardTitle>
+                      {getStatusBadge(policy.isCovered)}
+                    </CardHeader>
+                    
+                    <CardContent className="pt-6 space-y-6 flex-1 flex flex-col min-w-0">
+                      <div className="w-full">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Required Diagnosis</p>
+                        <p className="text-sm font-medium leading-relaxed break-words">{policy.requiredDiagnosis}</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/30 p-4 rounded-xl border w-full">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Prior Auth</p>
+                          <p className="text-sm font-bold truncate">{policy.priorAuth}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Site of Care</p>
+                          <p className="text-sm font-bold truncate" title={policy.siteOfCare}>{policy.siteOfCare}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 w-full">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Step Therapy (Try First)</p>
+                        <div className="bg-orange-50/50 text-orange-900 border border-orange-200 p-4 rounded-xl dark:bg-orange-950/30 dark:text-orange-200 dark:border-orange-900 h-full w-full">
+                          <p className="text-sm leading-relaxed break-words">{policy.stepTherapy}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+      
     </div>
   );
 }
