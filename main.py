@@ -1,3 +1,5 @@
+
+import json
 import os
 import fitz  
 from fastapi import FastAPI
@@ -43,6 +45,13 @@ class CompareRequest(BaseModel):
 class ComparisonResult(BaseModel):
     keyDifferences: List[str] = Field(description="Short bullet points highlighting the exact clinical or coverage changes between the two documents.")
     impactLevel: str = Field(description="Classify the change as 'Low', 'Medium', or 'High' impact.")
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
 
 # --- 2. Helper Functions ---
 def extract_text_from_pdf(file_path: str) -> str:
@@ -127,3 +136,42 @@ async def compare_policies(req: CompareRequest):
         response_format=ComparisonResult,
     )
     return completion.choices[0].message.parsed
+
+@app.post("/api/chat")
+async def chat_copilot(req: ChatRequest):
+    # 1. Convert our entire parsed policy database into a clean JSON string
+    # We remove the heavy 'raw_text' to save tokens and keep the AI focused only on the structured rules
+    clean_db = [{k: v for k, v in p.items() if k != "raw_text"} for p in DATABASE]
+    context_data = json.dumps(clean_db, indent=2)
+
+    # 2. Build the strict System Prompt
+    system_prompt = f"""You are the Anton RX Policy Copilot, an expert medical benefit market access analyst.
+    You answer user questions based STRICTLY on the following JSON database of parsed medical policies.
+    
+    RULES:
+    - If the answer is not in the database, explicitly say "I do not have that information in the current formulary database."
+    - Do NOT hallucinate or guess based on outside knowledge. 
+    - Keep your answers concise, professional, and formatted easily for reading.
+    - If a user asks a general question, synthesize the data across multiple payers.
+    - FORMATTING: Use clean, single-spaced Markdown. Do NOT add extra empty lines between list items or between a number and its text. Keep lists compact.
+
+    DATABASE:
+    {context_data}
+    """
+
+    # 3. Prepare the conversation history for OpenAI
+    openai_messages = [{"role": "system", "content": system_prompt}]
+    for msg in req.messages:
+        openai_messages.append({"role": msg.role, "content": msg.content})
+
+    try:
+        # 4. Generate the response
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=openai_messages,
+            temperature=0.2, # Low temperature makes it strictly factual rather than creative
+        )
+        return {"role": "assistant", "content": completion.choices[0].message.content}
+    except Exception as e:
+        print(f"Chat API Error: {e}")
+        return {"error": str(e)}
